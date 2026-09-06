@@ -1,0 +1,205 @@
+# AI Job Portal — microservices stack
+# Usage:  cp .env.example .env  &&  docker compose up -d --build
+#
+# Each service gets its own Mongo database (database-per-service) while
+# sharing one mongod process in dev. Redis carries the portal:events
+# stream (domain events) plus refresh-token JTI storage.
+
+x-service-defaults: &service-defaults
+  restart: unless-stopped
+  env_file: .env
+  depends_on:
+    mongo:
+      condition: service_healthy
+    redis:
+      condition: service_healthy
+  networks:
+    - portal
+
+services:
+  mongo:
+    image: mongo:7
+    restart: unless-stopped
+    volumes:
+      - mongo_data:/data/db
+    healthcheck:
+      test: ["CMD", "mongosh", "--quiet", "--eval", "db.adminCommand('ping').ok"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 20s
+    networks:
+      - portal
+
+  redis:
+    image: redis:7-alpine
+    restart: unless-stopped
+    command: ["redis-server", "--appendonly", "yes"]
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - portal
+
+  api-gateway:
+    <<: *service-defaults
+    build:
+      context: .
+      dockerfile: infra/Dockerfile.service
+      args: { SERVICE: api-gateway }
+    ports:
+      - "8000:8000"
+    depends_on:
+      redis:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "node", "-e", "fetch('http://localhost:8000/health').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+      start_period: 15s
+
+  auth-service:
+    <<: *service-defaults
+    build:
+      context: .
+      dockerfile: infra/Dockerfile.service
+      args: { SERVICE: auth-service }
+    environment:
+      - PORT=8001
+      - MONGO_DB=portal_auth
+      - ADMIN_EMAIL=${ADMIN_EMAIL:-}
+      - ADMIN_PASSWORD=${ADMIN_PASSWORD:-}
+    healthcheck:
+      test: ["CMD", "node", "-e", "fetch('http://localhost:8001/health').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+      start_period: 15s
+
+  job-service:
+    <<: *service-defaults
+    build:
+      context: .
+      dockerfile: infra/Dockerfile.service
+      args: { SERVICE: job-service }
+    environment:
+      - PORT=8002
+      - MONGO_DB=portal_jobs
+    healthcheck:
+      test: ["CMD", "node", "-e", "fetch('http://localhost:8002/health').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+      start_period: 15s
+
+  application-service:
+    <<: *service-defaults
+    build:
+      context: .
+      dockerfile: infra/Dockerfile.service
+      args: { SERVICE: application-service }
+    environment:
+      - PORT=8003
+      - MONGO_DB=portal_applications
+    healthcheck:
+      test: ["CMD", "node", "-e", "fetch('http://localhost:8003/health').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+      start_period: 15s
+
+  resume-service:
+    <<: *service-defaults
+    build:
+      context: .
+      dockerfile: infra/Dockerfile.service
+      args: { SERVICE: resume-service }
+    environment:
+      - PORT=8004
+      - MONGO_DB=portal_resumes
+    healthcheck:
+      test: ["CMD", "node", "-e", "fetch('http://localhost:8004/health').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+      start_period: 15s
+
+  company-service:
+    <<: *service-defaults
+    build:
+      context: .
+      dockerfile: infra/Dockerfile.service
+      args: { SERVICE: company-service }
+    environment:
+      - PORT=8005
+      - MONGO_DB=portal_companies
+      - UPLOAD_DIR=/app/uploads
+    volumes:
+      - company_uploads:/app/uploads
+    healthcheck:
+      test: ["CMD", "node", "-e", "fetch('http://localhost:8005/health').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+      start_period: 15s
+
+  ai-service:
+    <<: *service-defaults
+    build:
+      context: .
+      dockerfile: infra/Dockerfile.service
+      args: { SERVICE: ai-service }
+    environment:
+      - PORT=8006
+    healthcheck:
+      test: ["CMD", "node", "-e", "fetch('http://localhost:8006/health').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+      start_period: 15s
+
+  notification-service:
+    <<: *service-defaults
+    build:
+      context: .
+      dockerfile: infra/Dockerfile.service
+      args: { SERVICE: notification-service }
+    environment:
+      - PORT=8007
+      - MONGO_DB=portal_notifications
+    healthcheck:
+      test: ["CMD", "node", "-e", "fetch('http://localhost:8007/health').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+      start_period: 15s
+
+  interview-service:
+    <<: *service-defaults
+    build:
+      context: .
+      dockerfile: infra/Dockerfile.service
+      args: { SERVICE: interview-service }
+    environment:
+      - PORT=8008
+      - MONGO_DB=portal_interviews
+    healthcheck:
+      test: ["CMD", "node", "-e", "fetch('http://localhost:8008/health').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+      start_period: 15s
+
+volumes:
+  mongo_data:
+  redis_data:
+  company_uploads:
+
+networks:
+  portal:
+    driver: bridge

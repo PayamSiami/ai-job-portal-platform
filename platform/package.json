@@ -1,0 +1,26 @@
+{
+  "name": "ai-job-portal-platform",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Microservices platform for the AI job portal",
+  "type": "module",
+  "engines": {
+    "node": ">=20"
+  },
+  "workspaces": [
+    "packages/*",
+    "services/*"
+  ],
+  "scripts": {
+    "build:shared": "npm run build --workspace @portal/shared",
+    "build:services": "npm run build --workspaces --if-present --include-workspace-root=false",
+    "build": "npm run build:shared && npm run build:services",
+    "type-check": "npm run type-check --workspaces --if-present",
+    "dev:service": "echo 'Usage: npm run dev --workspace services/auth-service'",
+    "docker:up": "docker compose up -d --build",
+    "docker:down": "docker compose down"
+  },
+  "dependencies": {
+    "dotenv": "^17.4.2"
+  }
+}
