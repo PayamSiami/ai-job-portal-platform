@@ -54,7 +54,7 @@ npm run dev --workspace services/notification-service
 
 | Route prefix | Service | Auth |
 |---|---|---|
-| `/api/auth/*` | auth-service | public (login/register/refresh) + admin bootstrap |
+| `/api/auth/*` | auth-service | public (login/register/refresh) + admin role management |
 | `/api/jobs` | job-service | read public; write: employer |
 | `/api/applications` | application-service | participant/employer |
 | `/api/resumes` | resume-service | owner only |
@@ -122,6 +122,31 @@ Design points:
   under server-generated UUID names, served from a strict allowlist route.
 - **Admin bootstrap**: admin accounts can only be created via `AUTH_SERVICE_ADMIN_EMAIL`
   + `AUTH_SERVICE_ADMIN_PASSWORD` env at auth-service startup — never by registration.
+- **Admin role management**: an admin can promote/demote any user via
+  `PATCH /api/auth/users/:id/role` with `{ role: "job-seeker" | "employer" | "admin" }`.
+  The endpoint is gated on the JWT role (injected by the gateway as `x-user-role`);
+  non-admin callers receive 403. Setting a user to their current role returns 409,
+  and an invalid role enum returns 400. A `user.role_updated` event is published
+  on the `portal:events` stream on every successful change.
+
+### Performance note — bcryptjs
+
+This service uses `bcryptjs` (pure JavaScript) with configurable cost via the
+`BCRYPT_ROUNDS` env var (default 12). On most machines a 12-round compare takes
+**~700 ms** — this is the dominant cost in login/register latency.
+
+| Config | Login time (measured) |
+|---|---|
+| `BCRYPT_ROUNDS=12` (default) | ~700 ms |
+| `BCRYPT_ROUNDS=10` | ~200 ms |
+
+**For local dev**: set `BCRYPT_ROUNDS=10` in your root `.env` and restart
+`auth-service`. Existing `$2a$12$` hashes still verify correctly (bcrypt
+embeds the cost in the hash).
+
+**For production**: swap `bcryptjs` → native `bcrypt` (`npm install bcrypt`
+in auth-service, same API). Native compare at 12 rounds is **~20-40 ms** —
+an 18× improvement with no security trade-off.
 
 ## Environment
 

@@ -5,6 +5,7 @@ import {
   AppError,
   publishEvent,
   EventNames,
+  USER_ROLES,
   signAccessToken,
   signRefreshToken,
   verifyRefreshToken,
@@ -15,10 +16,11 @@ import {
   revokeRefreshFamily,
   type TokenPair,
   type UserDTO,
+  type UserRole,
 } from "@portal/shared";
 
 // ------------------------------------------------------------
-// Auth logic: registration (job-seeker | employer ONLY — admin
+// Auth logic: registration (job-seeker | employer ONLY admin
 // accounts are provisioned by script), login, refresh-token
 // rotation with theft detection, logout, Google sign-in.
 // ------------------------------------------------------------
@@ -59,6 +61,28 @@ export function toUserDTO(user: UserDoc): UserDTO {
   return { ...json, _id: String(json._id) };
 }
 
+/**
+ * Admin-only: change a user's role. There is no UI path to assign "admin"
+ * (register forbids it); admins are created only by the env bootstrap, and
+ * can re-role others here. Emits a user.role_updated event.
+ */
+export async function updateUserRole(targetId: string, role: UserRole): Promise<UserDTO> {
+  const { User } = await import("./user.model.js");
+  const user = await User.findById(targetId);
+  if (!user) throw new AppError("User not found", 404);
+  if (!USER_ROLES.includes(role)) throw new AppError("Invalid role", 400);
+  const oldRole = user.role;
+  if (oldRole === role) throw new AppError("User already has this role", 409);
+  user.role = role;
+  await user.save();
+  void publishEvent(EventNames.UserRoleUpdated, {
+    userId: String(user._id),
+    oldRole,
+    newRole: role,
+  }).catch((err) => console.error("[auth] failed to publish role update:", err));
+  return toUserDTO(user);
+}
+
 export async function register(input: {
   username: string;
   email: string;
@@ -81,7 +105,7 @@ export async function register(input: {
     username: input.username,
     email: input.email.toLowerCase(),
     password: input.password,
-    role: input.role, // never accepts "admin" — enforced by route schema too
+    role: input.role, // never accepts "admin" enforced by route schema too
     profile: input.profile ?? { skills: [] },
     isActive: true,
   });

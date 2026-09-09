@@ -15,6 +15,9 @@ router.post("/google", controller.googleAuth);
 router.get("/me", controller.me);
 router.post("/change-password", controller.changePassword);
 
+// Admin: promote/demote users (no self-service path to "admin").
+router.patch("/users/:id/role", controller.updateUserRole);
+
 // Internal service-to-service
 router.get("/internal/users/:id", requireInternalToken, controller.internalGetUser);
 

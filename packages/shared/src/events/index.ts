@@ -11,6 +11,7 @@ export const EVENT_DLQ = "portal:events:dlq";
 
 export const EventNames = {
   UserRegistered: "user.registered",
+  UserRoleUpdated: "user.role_updated",
   CompanyCreated: "company.created",
   JobCreated: "job.created",
   ResumeCreated: "resume.created",
@@ -25,6 +26,12 @@ export const UserRegisteredPayload = z.object({
   email: z.string().email(),
   username: z.string(),
   role: z.enum(["job-seeker", "employer", "admin"]),
+});
+
+export const UserRoleUpdatedPayload = z.object({
+  userId: z.string(),
+  oldRole: z.enum(["job-seeker", "employer", "admin"]),
+  newRole: z.enum(["job-seeker", "employer", "admin"]),
 });
 
 export const CompanyCreatedPayload = z.object({
@@ -78,6 +85,7 @@ export const InterviewCompletedPayload = z.object({
 /** Map of event name -> zod payload schema. Used to validate on publish & consume. */
 export const EventSchemas = {
   [EventNames.UserRegistered]: UserRegisteredPayload,
+  [EventNames.UserRoleUpdated]: UserRoleUpdatedPayload,
   [EventNames.CompanyCreated]: CompanyCreatedPayload,
   [EventNames.JobCreated]: JobCreatedPayload,
   [EventNames.ResumeCreated]: ResumeCreatedPayload,

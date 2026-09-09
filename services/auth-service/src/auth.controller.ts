@@ -1,5 +1,12 @@
 import { z } from "zod";
-import { asyncHandler, sendSuccess, sendError, userContext } from "@portal/shared";
+import {
+  asyncHandler,
+  sendSuccess,
+  sendError,
+  userContext,
+  USER_ROLES,
+  type UserRole,
+} from "@portal/shared";
 import * as authService from "./auth.service.js";
 
 const RegisterSchema = z.object({
@@ -88,6 +95,28 @@ export const me = asyncHandler(async (req, res) => {
   const user = await authService.internalGetUser(ctx.userId);
   if (!user) return sendError(res, "User not found", 404);
   sendSuccess(res, user, "Profile fetched");
+});
+
+// ------------------------- Admin: update user role -------------------------
+// Only an admin (role carried in the access JWT, verified at the gateway)
+// may change a user's role. There is no self-service path to "admin".
+
+const UpdateRoleSchema = z.object({
+  role: z.enum([...USER_ROLES]), // includes "admin" here, gated server-side
+});
+
+export const updateUserRole = asyncHandler(async (req, res) => {
+  const ctx = userContext(req);
+  if (ctx.role !== "admin") return sendError(res, "Admin access required", 403);
+  const parsed = UpdateRoleSchema.safeParse(req.body);
+  if (!parsed.success) {
+    return sendError(res, parsed.error.issues[0]?.message ?? "Invalid input", 400);
+  }
+  const user = await authService.updateUserRole(
+    String(req.params.id),
+    parsed.data.role as UserRole,
+  );
+  sendSuccess(res, { user }, "Role updated");
 });
 
 // ------------------------- Internal (x-internal-token) -------------------------
