@@ -18,7 +18,14 @@ router.post("/change-password", controller.changePassword);
 // Admin: promote/demote users (no self-service path to "admin").
 router.patch("/users/:id/role", controller.updateUserRole);
 
+// Candidates
+router.get("/candidates", controller.getCandidates);
+
 // Internal service-to-service
-router.get("/internal/users/:id", requireInternalToken, controller.internalGetUser);
+router.get(
+  "/internal/users/:id",
+  requireInternalToken,
+  controller.internalGetUser,
+);
 
 export default router;

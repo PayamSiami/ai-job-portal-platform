@@ -25,6 +25,14 @@ import {
 // rotation with theft detection, logout, Google sign-in.
 // ------------------------------------------------------------
 
+interface GoogleTokenInfo {
+  sub?: string;
+  email?: string;
+  email_verified?: string | boolean;
+  aud?: string;
+  name?: string;
+}
+
 export function issueTokenPair(user: UserDoc, reuseFamily?: string): TokenPair {
   const family = reuseFamily ?? randomUUID();
   const jti = randomUUID();
@@ -34,7 +42,11 @@ export function issueTokenPair(user: UserDoc, reuseFamily?: string): TokenPair {
     email: user.email,
     username: user.username,
   });
-  const refreshToken = signRefreshToken({ sub: String(user._id), jti, fam: family });
+  const refreshToken = signRefreshToken({
+    sub: String(user._id),
+    jti,
+    fam: family,
+  });
   // Fire and forget: token store is best-effort (redis outage shouldn't
   // block login, refresh validation degrades gracefully below).
   void rememberRefreshToken(family, jti, refreshTtlSeconds()).catch((err) =>
@@ -53,10 +65,12 @@ function parseExp(value: string | undefined, fallback: number): number {
   const m = /^(\d+)([smhd])?$/.exec(value);
   if (!m) return fallback;
   const n = parseInt(m[1], 10);
-  return n * (m[2] === "m" ? 60 : m[2] === "h" ? 3600 : m[2] === "d" ? 86400 : 1);
+  return (
+    n * (m[2] === "m" ? 60 : m[2] === "h" ? 3600 : m[2] === "d" ? 86400 : 1)
+  );
 }
 
-export function toUserDTO(user: UserDoc): UserDTO {
+function toUserDTO(user: UserDoc): UserDTO {
   const json = user.toJSON() as unknown as UserDTO & { _id: unknown };
   return { ...json, _id: String(json._id) };
 }
@@ -66,7 +80,10 @@ export function toUserDTO(user: UserDoc): UserDTO {
  * (register forbids it); admins are created only by the env bootstrap, and
  * can re-role others here. Emits a user.role_updated event.
  */
-export async function updateUserRole(targetId: string, role: UserRole): Promise<UserDTO> {
+export async function updateUserRole(
+  targetId: string,
+  role: UserRole,
+): Promise<UserDTO> {
   const { User } = await import("./user.model.js");
   const user = await User.findById(targetId);
   if (!user) throw new AppError("User not found", 404);
@@ -79,7 +96,9 @@ export async function updateUserRole(targetId: string, role: UserRole): Promise<
     userId: String(user._id),
     oldRole,
     newRole: role,
-  }).catch((err) => console.error("[auth] failed to publish role update:", err));
+  }).catch((err) =>
+    console.error("[auth] failed to publish role update:", err),
+  );
   return toUserDTO(user);
 }
 
@@ -92,10 +111,7 @@ export async function register(input: {
 }): Promise<{ user: UserDTO; tokens: TokenPair }> {
   const { User } = await import("./user.model.js");
   const existing = await User.findOne({
-    $or: [
-      { email: input.email.toLowerCase() },
-      { username: input.username },
-    ],
+    $or: [{ email: input.email.toLowerCase() }, { username: input.username }],
   }).lean();
   if (existing) {
     throw new AppError("Email or username already registered", 409);
@@ -120,14 +136,25 @@ export async function register(input: {
   return { user: toUserDTO(user), tokens: issueTokenPair(user) };
 }
 
-export async function login(email: string, password: string): Promise<{ user: UserDTO; tokens: TokenPair }> {
+export async function login(
+  email: string,
+  password: string,
+): Promise<{ user: UserDTO; tokens: TokenPair }> {
   const { User } = await import("./user.model.js");
-  const user = await User.findOne({ email: email.toLowerCase() }).select("+password");
+  const user = await User.findOne({ email: email.toLowerCase() }).select(
+    "+password",
+  );
   if (!user) throw new AppError("Invalid email or password", 401);
   if (!user.isActive) throw new AppError("Account has been deactivated", 403);
-  if (!user.password) throw new AppError("This account uses Google sign-in. Continue with Google.", 400);
+  if (!user.password)
+    throw new AppError(
+      "This account uses Google sign-in. Continue with Google.",
+      400,
+    );
 
-  const ok = user.password ? await bcrypt.compare(password, user.password) : false;
+  const ok = user.password
+    ? await bcrypt.compare(password, user.password)
+    : false;
   if (!ok) throw new AppError("Invalid email or password", 401);
 
   user.lastLogin = new Date();
@@ -135,9 +162,7 @@ export async function login(email: string, password: string): Promise<{ user: Us
   return { user: toUserDTO(user), tokens: issueTokenPair(user) };
 }
 
-export async function refreshTokens(
-  refreshToken: string,
-): Promise<TokenPair> {
+export async function refreshTokens(refreshToken: string): Promise<TokenPair> {
   let claims;
   try {
     claims = verifyRefreshToken(refreshToken);
@@ -149,7 +174,10 @@ export async function refreshTokens(
   if (valid === false) {
     // Token was revoked but is being replayed -> assume theft, kill family.
     await revokeRefreshFamily(claims.fam).catch(() => undefined);
-    throw new AppError("Refresh token reuse detected. Please log in again.", 401);
+    throw new AppError(
+      "Refresh token reuse detected. Please log in again.",
+      401,
+    );
   }
   if (valid === null) {
     // Redis unavailable: fail closed rather than accept revoked tokens.
@@ -192,7 +220,32 @@ export async function changePassword(
   await user.save();
 }
 
-export async function googleAuth(idToken: string): Promise<{ user: UserDTO; tokens: TokenPair }> {
+export async function getCandidates(): Promise<{ user: UserDTO[] }> {
+  const { User } = await import("./user.model.js");
+  const candidates = await User.find({ role: "job-seeker" }).lean();
+
+  console.log("Candidates fetched:", candidates);
+  return {
+    user: candidates.map((user) => {
+      const { _id, username, email, role, profile, isActive, createdAt } =
+        user as never as UserDTO & { _id: unknown };
+      void _id;
+      return {
+        _id: String((user as unknown as { _id: { toString(): string } })._id),
+        username,
+        email,
+        role,
+        profile,
+        isActive,
+        createdAt: createdAt as unknown as string,
+      };
+    }),
+  };
+}
+
+export async function googleAuth(
+  idToken: string,
+): Promise<{ user: UserDTO; tokens: TokenPair }> {
   const payload = await verifyGoogleIdToken(idToken);
   if (!payload.email || !payload.sub) {
     throw new AppError("Google token does not contain an email", 400);
@@ -204,7 +257,9 @@ export async function googleAuth(idToken: string): Promise<{ user: UserDTO; toke
   });
 
   if (!user) {
-    const username = await uniqueUsername(payload.email.split("@")[0] ?? "user");
+    const username = await uniqueUsername(
+      payload.email.split("@")[0] ?? "user",
+    );
     user = await User.create({
       username,
       email: payload.email.toLowerCase(),
@@ -230,14 +285,6 @@ export async function googleAuth(idToken: string): Promise<{ user: UserDTO; toke
   return { user: toUserDTO(user), tokens: issueTokenPair(user) };
 }
 
-interface GoogleTokenInfo {
-  sub?: string;
-  email?: string;
-  email_verified?: string | boolean;
-  aud?: string;
-  name?: string;
-}
-
 async function verifyGoogleIdToken(idToken: string): Promise<GoogleTokenInfo> {
   const response = await fetch(
     `https://oauth2.googleapis.com/tokeninfo?id_token=${encodeURIComponent(idToken)}`,
@@ -256,7 +303,8 @@ async function uniqueUsername(base: string): Promise<string> {
   const { User } = await import("./user.model.js");
   const clean = base.replace(/[^a-zA-Z0-9_-]/g, "").slice(0, 20) || "user";
   for (let i = 0; i < 20; i++) {
-    const candidate = i === 0 ? clean : `${clean}${Math.floor(Math.random() * 10000)}`;
+    const candidate =
+      i === 0 ? clean : `${clean}${Math.floor(Math.random() * 10000)}`;
     if (!(await User.exists({ username: candidate }))) return candidate;
   }
   return `user_${randomUUID().slice(0, 8)}`;
@@ -270,7 +318,8 @@ export async function internalGetUser(userId: string): Promise<UserDTO | null> {
   const { User } = await import("./user.model.js");
   const user = await User.findById(userId).lean();
   if (!user) return null;
-  const { _id, username, email, role, profile, isActive, createdAt } = user as never as UserDTO & { _id: unknown };
+  const { _id, username, email, role, profile, isActive, createdAt } =
+    user as never as UserDTO & { _id: unknown };
   void _id;
   return {
     _id: String((user as unknown as { _id: { toString(): string } })._id),

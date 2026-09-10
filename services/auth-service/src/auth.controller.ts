@@ -38,25 +38,33 @@ const RefreshSchema = z.object({ refreshToken: z.string().min(10) });
 const GoogleSchema = z.object({ idToken: z.string().min(10) });
 const ChangePasswordSchema = z.object({
   currentPassword: z.string(),
-  newPassword: z
-    .string()
-    .min(8)
-    .regex(/[a-z]/)
-    .regex(/[A-Z]/)
-    .regex(/[0-9]/),
+  newPassword: z.string().min(8).regex(/[a-z]/).regex(/[A-Z]/).regex(/[0-9]/),
+});
+
+const UpdateRoleSchema = z.object({
+  role: z.enum([...USER_ROLES]), // includes "admin" here, gated server-side
 });
 
 export const register = asyncHandler(async (req, res) => {
   const parsed = RegisterSchema.safeParse(req.body);
-  if (!parsed.success) return sendError(res, parsed.error.issues[0]?.message ?? "Invalid input", 400);
+  if (!parsed.success)
+    return sendError(
+      res,
+      parsed.error.issues[0]?.message ?? "Invalid input",
+      400,
+    );
   const { user, tokens } = await authService.register(parsed.data);
   sendSuccess(res, { user, ...tokens }, "Registered successfully", 201);
 });
 
 export const login = asyncHandler(async (req, res) => {
   const parsed = LoginSchema.safeParse(req.body);
-  if (!parsed.success) return sendError(res, "Email and password are required", 400);
-  const { user, tokens } = await authService.login(parsed.data.email, parsed.data.password);
+  if (!parsed.success)
+    return sendError(res, "Email and password are required", 400);
+  const { user, tokens } = await authService.login(
+    parsed.data.email,
+    parsed.data.password,
+  );
   sendSuccess(res, { user, ...tokens }, "Login successful");
 });
 
@@ -69,7 +77,9 @@ export const refresh = asyncHandler(async (req, res) => {
 
 export const logout = asyncHandler(async (req, res) => {
   const parsed = RefreshSchema.safeParse(req.body ?? {});
-  await authService.logout(parsed.success ? parsed.data.refreshToken : undefined);
+  await authService.logout(
+    parsed.success ? parsed.data.refreshToken : undefined,
+  );
   sendSuccess(res, { ok: true }, "Logged out");
 });
 
@@ -77,8 +87,17 @@ export const changePassword = asyncHandler(async (req, res) => {
   const ctx = userContext(req);
   if (!ctx.userId) return sendError(res, "Authentication required", 401);
   const parsed = ChangePasswordSchema.safeParse(req.body);
-  if (!parsed.success) return sendError(res, parsed.error.issues[0]?.message ?? "Invalid input", 400);
-  await authService.changePassword(ctx.userId, parsed.data.currentPassword, parsed.data.newPassword);
+  if (!parsed.success)
+    return sendError(
+      res,
+      parsed.error.issues[0]?.message ?? "Invalid input",
+      400,
+    );
+  await authService.changePassword(
+    ctx.userId,
+    parsed.data.currentPassword,
+    parsed.data.newPassword,
+  );
   sendSuccess(res, { ok: true }, "Password updated");
 });
 
@@ -101,22 +120,37 @@ export const me = asyncHandler(async (req, res) => {
 // Only an admin (role carried in the access JWT, verified at the gateway)
 // may change a user's role. There is no self-service path to "admin".
 
-const UpdateRoleSchema = z.object({
-  role: z.enum([...USER_ROLES]), // includes "admin" here, gated server-side
-});
-
 export const updateUserRole = asyncHandler(async (req, res) => {
   const ctx = userContext(req);
   if (ctx.role !== "admin") return sendError(res, "Admin access required", 403);
   const parsed = UpdateRoleSchema.safeParse(req.body);
   if (!parsed.success) {
-    return sendError(res, parsed.error.issues[0]?.message ?? "Invalid input", 400);
+    return sendError(
+      res,
+      parsed.error.issues[0]?.message ?? "Invalid input",
+      400,
+    );
   }
   const user = await authService.updateUserRole(
     String(req.params.id),
     parsed.data.role as UserRole,
   );
   sendSuccess(res, { user }, "Role updated");
+});
+
+export const getCandidates = asyncHandler(async (req, res) => {
+  const ctx = userContext(req);
+  // if (ctx.role !== "admin") return sendError(res, "Admin access required", 403);
+  // const parsed = UpdateRoleSchema.safeParse(req.body);
+  // if (!parsed.success) {
+  //   return sendError(
+  //     res,
+  //     parsed.error.issues[0]?.message ?? "Invalid input",
+  //     400,
+  //   );
+  // }
+  const user = await authService.getCandidates();
+  sendSuccess(res, { user }, "get candidates");
 });
 
 // ------------------------- Internal (x-internal-token) -------------------------

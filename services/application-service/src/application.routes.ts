@@ -16,6 +16,8 @@ router.post("/", applications.apply); // job-seeker applies
 router.get("/mine", applications.myApplications); // job-seeker
 router.get("/employer", applications.employerApplications); // employer
 router.get("/stats", applications.stats); // employer
+// /job/:jobId/candidates must be registered before the /:id catch-all.
+router.get("/job/:jobId/candidates", applications.getCandidates); // employer: candidates for one of my jobs
 router.get("/:id", applications.getById); // participant or admin
 router.patch("/:id/status", applications.updateStatus); // employer
 router.patch("/:id/withdraw", applications.withdraw); // job-seeker

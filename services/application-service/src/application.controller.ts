@@ -10,7 +10,7 @@ import {
   userContext,
 } from "@portal/shared";
 import { Application, ALLOWED_TRANSITIONS, type ApplicationStatus } from "./application.model.js";
-import { getJob, getResumeOwned, screenWithAI } from "./clients.js";
+import { getJob, getResumeOwned, screenWithAI, getCandidateProfile } from "./clients.js";
 
 export const ApplySchema = z.object({
   jobId: z.string().min(1),
@@ -209,6 +209,47 @@ export const employerApplications = asyncHandler(async (req: Request, res: Respo
     Application.countDocuments(filter),
   ]);
   sendSuccess(res, { items, total, page, limit, pages: Math.ceil(total / limit) });
+});
+
+// ------------------------------------------------------------
+// Employer: candidates who applied to one of my jobs (profile-enriched)
+// ------------------------------------------------------------
+
+export const getCandidates = asyncHandler(async (req: Request, res: Response) => {
+  const ctx = userContext(req);
+  if (!ctx.userId) return sendError(res, "Authentication required", 401);
+
+  const jobId = String(req.params.jobId);
+
+  const parsed = ListSchema.safeParse(req.query);
+  if (!parsed.success) return sendError(res, "Invalid query", 400);
+  const { status, page, limit } = parsed.data;
+
+  // Scoped by the employerId snapshot on the application document, so only
+  // candidates who applied to jobs the caller posted are returned. A job-seeker
+  // hitting this endpoint simply gets an empty list.
+  const filter: Record<string, unknown> = { jobId, employerId: ctx.userId };
+  if (status) filter.status = status;
+
+  const [items, total] = await Promise.all([
+    Application.find(filter)
+      .sort({ createdAt: -1 })
+      .skip((page - 1) * limit)
+      .limit(limit)
+      .lean(),
+    Application.countDocuments(filter),
+  ]);
+
+  // Best-effort profile enrichment from auth-service; never blocks/fails the
+  // response if the lookup fails for an individual candidate.
+  const enriched = await Promise.all(
+    items.map(async (app) => {
+      const candidate = await getCandidateProfile(String(app.candidateId));
+      return { ...app, candidate };
+    }),
+  );
+
+  sendSuccess(res, { items: enriched, total, page, limit, pages: Math.ceil(total / limit) });
 });
 
 export const stats = asyncHandler(async (req: Request, res: Response) => {

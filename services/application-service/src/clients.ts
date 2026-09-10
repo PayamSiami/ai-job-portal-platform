@@ -61,6 +61,36 @@ export async function getResumeContent(resumeId: string): Promise<ResumeContent 
   }
 }
 
+/**
+ * Light candidate profile used to enrich the getCandidates list view.
+ * Only username + public profile are returned (PII omitted).
+ */
+export interface CandidateProfile {
+  username: string;
+  profile: {
+    firstName?: string;
+    lastName?: string;
+    headline?: string;
+    location?: string;
+    skills?: string[];
+    experience?: number;
+  } | null;
+}
+
+export async function getCandidateProfile(userId: string): Promise<CandidateProfile | null> {
+  try {
+    const user = await internalFetch<{ username?: string; profile?: unknown }>(
+      AUTH(),
+      `/api/auth/internal/users/${userId}`,
+      { timeoutMs: 10_000 },
+    );
+    if (!user) return null;
+    return { username: user.username ?? "", profile: (user.profile as CandidateProfile["profile"]) ?? null };
+  } catch {
+    return null; // best-effort: enrichment failure never blocks the response
+  }
+}
+
 export interface ScreeningResult {
   score: number;
   explanation: string;
