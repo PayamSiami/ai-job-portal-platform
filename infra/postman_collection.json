@@ -1198,6 +1198,212 @@
           "description": "2xx returns: { success, message, data }\n\n401 if the access token is missing/invalid."
         }
       ]
+    },
+    {
+      "name": "Resumes",
+      "item": [
+        {
+          "name": "Create a resume",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{access_token}}",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/resumes",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "resumes"
+              ]
+            },
+            "response": [],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"title\": \"Senior Frontend Engineer Resume\",\n  \"personalInfo\": {\n    \"fullName\": \"Jane Doe\",\n    \"email\": \"jane@example.com\",\n    \"phone\": \"+1 555 0100\",\n    \"location\": \"Remote\"\n  },\n  \"summary\": \"5+ years building React and Next.js applications at scale.\",\n  \"skills\": [\"React\", \"TypeScript\", \"Next.js\", \"Node.js\"],\n  \"workExperience\": [\n    {\n      \"company\": \"Acme Corp\",\n      \"position\": \"Senior Engineer\",\n      \"startDate\": \"2022\",\n      \"endDate\": \"2024\",\n      \"current\": false,\n      \"description\": \"Led the frontend team building a SaaS dashboard.\"\n    }\n  ],\n  \"education\": [\n    {\n      \"institution\": \"MIT\",\n      \"degree\": \"BS\",\n      \"field\": \"Computer Science\",\n      \"startDate\": \"2018\",\n      \"endDate\": \"2022\"\n    }\n  ],\n  \"languages\": [\"English\", \"Persian\"],\n  \"template\": \"modern\"\n}"
+            }
+          },
+          "description": "Create a resume (owner-scoped). One user may own up to 10 resumes; the first one is auto-set as primary. Body shape: see resume-service UpsertSchema (title, personalInfo, summary, skills, workExperience, education, languages, template). 2xx returns: { success, message, data }. 401 if the access token is missing/invalid."
+        },
+        {
+          "name": "List the authenticated user's resumes",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{access_token}}",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/resumes/mine",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "resumes",
+                "mine"
+              ]
+            },
+            "response": []
+          },
+          "description": "2xx returns: { success, message, data }\n\n401 if the access token is missing/invalid."
+        },
+        {
+          "name": "Get a resume by id",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{access_token}}",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/resumes/{id}",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "resumes",
+                "{{id}}"
+              ]
+            },
+            "response": []
+          },
+          "description": "Owner or admin only. 2xx returns: { success, message, data }. 401 if the access token is missing/invalid. 403/404 if the resume is not yours and you are not an admin."
+        },
+        {
+          "name": "Update a resume (owner only)",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{access_token}}",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/resumes/{id}",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "resumes",
+                "{{id}}"
+              ]
+            },
+            "response": [],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"title\": \"Senior Frontend Engineer (Updated)\",\n  \"skills\": [\"React\", \"TypeScript\", \"Next.js\", \"Node.js\", \"Tailwind CSS\"],\n  \"summary\": \"6+ years building React and Next.js applications at scale, plus team leadership.\"\n}"
+            }
+          },
+          "description": "Partial update is supported. Body shape: partial UpsertSchema (see resume-service). 2xx returns: { success, message, data }. 401 if the access token is missing/invalid. 403/404 if the resume is not yours."
+        },
+        {
+          "name": "Delete a resume (owner only)",
+          "request": {
+            "method": "DELETE",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{access_token}}",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/resumes/{id}",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "resumes",
+                "{{id}}"
+              ]
+            },
+            "response": []
+          },
+          "description": "2xx returns: { success, message, data }. 401 if the access token is missing/invalid. 403/404 if the resume is not yours."
+        },
+        {
+          "name": "Set this resume as the user's primary resume",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{access_token}}",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/resumes/{id}/primary",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "resumes",
+                "{{id}}",
+                "primary"
+              ]
+            },
+            "response": []
+          },
+          "description": "Marks the given resume as the authenticated user's primary resume (clears the previous primary). 2xx returns: { success, message, data }. 401 if the access token is missing/invalid. 403/404 if the resume is not yours."
+        },
+        {
+          "name": "Export a resume as PDF (owner or admin only)",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{access_token}}",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/resumes/{id}/pdf",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "resumes",
+                "{{id}}",
+                "pdf"
+              ]
+            },
+            "response": []
+          },
+          "description": "Returns the resume rendered as application/pdf bytes (Content-Disposition: attachment). 401 if the access token is missing/invalid. 403/404 if the resume is not yours and you are not an admin."
+        }
+      ]
     }
   ]
 }
