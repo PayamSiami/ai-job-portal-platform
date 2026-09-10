@@ -98,6 +98,13 @@ export const openapiDocument: object = {
           user: { $ref: "#/components/schemas/User" },
         },
       },
+      GoogleLoginRequest: {
+        type: "object",
+        required: ["idToken"],
+        properties: {
+          idToken: { type: "string", description: "Google ID token issued to the client after Google sign-in" },
+        },
+      },
       User: {
         type: "object",
         properties: {
@@ -125,6 +132,73 @@ export const openapiDocument: object = {
               location: { type: "string", maxLength: 120 },
             },
           },
+        },
+      },
+      ResumeRequest: {
+        type: "object",
+        required: ["title"],
+        properties: {
+          title: { type: "string", minLength: 2, maxLength: 120 },
+          personalInfo: {
+            type: "object",
+            properties: {
+              fullName: { type: "string", maxLength: 120 },
+              email: { type: "string", format: "email" },
+              phone: { type: "string", maxLength: 30 },
+              location: { type: "string", maxLength: 120 },
+            },
+          },
+          summary: { type: "string", maxLength: 2000 },
+          skills: { type: "array", items: { type: "string", maxLength: 40 }, maxItems: 40 },
+          workExperience: {
+            type: "array",
+            maxItems: 15,
+            items: {
+              type: "object",
+              properties: {
+                company: { type: "string", maxLength: 120 },
+                position: { type: "string", maxLength: 120 },
+                startDate: { type: "string", maxLength: 20 },
+                endDate: { type: "string", maxLength: 20 },
+                current: { type: "boolean" },
+                description: { type: "string", maxLength: 2000 },
+              },
+            },
+          },
+          education: {
+            type: "array",
+            maxItems: 10,
+            items: {
+              type: "object",
+              properties: {
+                institution: { type: "string", maxLength: 120 },
+                degree: { type: "string", maxLength: 120 },
+                field: { type: "string", maxLength: 120 },
+                startDate: { type: "string", maxLength: 20 },
+                endDate: { type: "string", maxLength: 20 },
+              },
+            },
+          },
+          languages: { type: "array", items: { type: "string", maxLength: 30 }, maxItems: 10 },
+          template: { type: "string", enum: ["modern", "classic", "minimal"], default: "modern" },
+        },
+      },
+      Resume: {
+        type: "object",
+        properties: {
+          _id: { type: "string" },
+          userId: { type: "string" },
+          title: { type: "string" },
+          personalInfo: { type: "object" },
+          summary: { type: "string" },
+          skills: { type: "array", items: { type: "string" } },
+          workExperience: { type: "array", items: { type: "object" } },
+          education: { type: "array", items: { type: "object" } },
+          languages: { type: "array", items: { type: "string" } },
+          template: { type: "string" },
+          isPrimary: { type: "boolean" },
+          createdAt: { type: "string", format: "date-time" },
+          updatedAt: { type: "string", format: "date-time" },
         },
       },
       RefreshRequest: { type: "object", required: ["refreshToken"], properties: { refreshToken: { type: "string", minLength: 10 } } },
@@ -243,6 +317,18 @@ export const openapiDocument: object = {
         }),
       },
     },
+    "/api/auth/google": {
+      post: {
+        ...PUBLIC,
+        ...op("Auth", "Google OAuth sign-in (exchanges a client-issued ID token for JWTs)", {
+          requestBody: Body("#/components/schemas/GoogleLoginRequest"),
+          responses: {
+            200: { description: "Tokens issued", content: { "application/json": { schema: { $ref: "#/components/schemas/LoginResponse" } } } },
+            401: Err("Invalid Google token"),
+          },
+        }),
+      },
+    },
     "/api/auth/refresh": {
       post: {
         ...PUBLIC,
@@ -292,6 +378,17 @@ export const openapiDocument: object = {
     "/api/applications/{id}": { get: { ...AUTH, ...op("Applications", "Get an application (participant or admin)", { parameters: [{ name: "id", in: "path", required: true, schema: { type: "string" } }], responses: { 200: Ok("Application"), 403: Err("Access denied"), 404: Err("Not found") } }) } },
     "/api/applications/{id}/status": { patch: { ...AUTH, ...op("Applications", "Employer: change application status (e.g. accepted/rejected)", { parameters: [{ name: "id", in: "path", required: true, schema: { type: "string" } }], responses: { 200: Ok("Updated"), 403: Err("Employer only"), 400: Err("Invalid status") } }) } },
     "/api/applications/{id}/withdraw": { patch: { ...AUTH, ...op("Applications", "Candidate: withdraw an application", { parameters: [{ name: "id", in: "path", required: true, schema: { type: "string" } }], responses: { 200: Ok("Withdrawn"), 400: Err("Cannot withdraw now") } }) } },
+
+    // --------------------------------------------------------------- Resumes
+    "/api/resumes": { post: { ...AUTH, ...op("Resumes", "Create a resume (owner-scoped; max 10 per user)", { requestBody: Body("#/components/schemas/ResumeRequest"), responses: { 201: Ok("Resume created"), 400: Err("Validation error / resume limit reached"), 401: Err("Authentication required") } }) } },
+    "/api/resumes/mine": { get: { ...AUTH, ...op("Resumes", "List the authenticated user's resumes", { responses: { 200: Ok("List"), 401: Err("Authentication required") } }) } },
+    "/api/resumes/{id}": {
+      get: { ...AUTH, ...op("Resumes", "Get a resume (owner or admin)", { parameters: [{ name: "id", in: "path", required: true, schema: { type: "string" } }], responses: { 200: Ok("Resume"), 401: Err("Authentication required"), 403: Err("Access denied"), 404: Err("Not found") } }) },
+      put: { ...AUTH, ...op("Resumes", "Update a resume (owner; partial update supported)", { parameters: [{ name: "id", in: "path", required: true, schema: { type: "string" } }], requestBody: Body("#/components/schemas/ResumeRequest"), responses: { 200: Ok("Resume updated"), 401: Err("Authentication required"), 403: Err("Access denied"), 404: Err("Not found") } }) },
+      delete: { ...AUTH, ...op("Resumes", "Delete a resume (owner)", { parameters: [{ name: "id", in: "path", required: true, schema: { type: "string" } }], responses: { 200: Ok("Resume deleted"), 401: Err("Authentication required"), 403: Err("Access denied"), 404: Err("Not found") } }) },
+    },
+    "/api/resumes/{id}/primary": { patch: { ...AUTH, ...op("Resumes", "Set this resume as the user's primary resume", { parameters: [{ name: "id", in: "path", required: true, schema: { type: "string" } }], responses: { 200: Ok("Primary resume set"), 401: Err("Authentication required"), 403: Err("Access denied"), 404: Err("Not found") } }) } },
+    "/api/resumes/{id}/pdf": { get: { ...AUTH, ...op("Resumes", "Export a resume as PDF (owner or admin). Returns application/pdf bytes.", { parameters: [{ name: "id", in: "path", required: true, schema: { type: "string" } }], responses: { 200: { description: "PDF bytes (application/pdf)", content: { "application/pdf": {} } }, 401: Err("Authentication required"), 403: Err("Access denied"), 404: Err("Not found") } }) } },
 
     // ------------------------------------------------------------- Interviews
     "/api/interviews/start": {
