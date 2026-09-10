@@ -100,6 +100,41 @@
           "description": "Body shape: see /openapi.json -> components.schemas\n\n2xx returns: { success, message, data }\n\n401 if the access token is missing/invalid."
         },
         {
+          "name": "Google OAuth sign-in",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{access_token}}",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/auth/google",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "auth",
+                "google"
+              ]
+            },
+            "response": [],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"idToken\": \"<Google ID token from the client>\"\n}"
+            }
+          },
+          "description": "Exchange a Google ID token for JWT access + refresh tokens. Body: { \"idToken\": \"...\" }. 2xx returns: { success, message, data: { accessToken, refreshToken, user } }. Public route (no access token required)."
+        },
+        {
           "name": "Rotate an access token from a refresh token",
           "request": {
             "method": "POST",
