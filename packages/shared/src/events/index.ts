@@ -78,7 +78,7 @@ export const InterviewCompletedPayload = z.object({
   jobTitle: z.string(),
   candidateId: z.string(),
   employerId: z.string(),
-  overallScore: z.number(),
+  overallScore: z.number().nullable(),
   recommendation: z.string(),
 });
 

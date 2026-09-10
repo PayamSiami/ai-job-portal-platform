@@ -11,6 +11,7 @@ router.use(requireInternalToken);
 // Interview AI
 router.post("/interview/questions", controller.interviewQuestions);
 router.post("/interview/score-answer", controller.interviewScore);
+router.post("/interview/score-answer/stream", controller.interviewScoreStream);
 router.post("/interview/report", controller.interviewReport);
 
 // Screening & content AI

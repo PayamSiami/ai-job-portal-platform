@@ -1,0 +1,1203 @@
+{
+  "info": {
+    "name": "AI Job Portal API",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
+    "description": "Auto-generated from the gateway's OpenAPI spec (services/api-gateway/src/openapi.ts). 1) run `POST /api/auth/login` with your email/password, 2) paste the returned `accessToken` into the Authorize dialog (or set {{access_token}}), 3) try any endpoint."
+  },
+  "auth": {
+    "type": "bearer",
+    "bearer": [
+      {
+        "key": "token",
+        "value": "{{access_token}}"
+      }
+    ]
+  },
+  "variable": [
+    {
+      "key": "base_url",
+      "value": "http://localhost:8000",
+      "type": "string"
+    },
+    {
+      "key": "access_token",
+      "value": "",
+      "type": "string"
+    }
+  ],
+  "item": [
+    {
+      "name": "Auth",
+      "item": [
+        {
+          "name": "Register a new user",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{access_token}}",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/auth/register",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "auth",
+                "register"
+              ]
+            },
+            "response": [],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"username\": \"newuser\",\n  \"email\": \"you@example.com\",\n  \"password\": \"P@ssw0rd1A\",\n  \"role\": \"job-seeker\",\n  \"profile\": {\n    \"firstName\": \"You\",\n    \"lastName\": \"There\"\n  }\n}"
+            }
+          },
+          "description": "Body shape: see /openapi.json -> components.schemas"
+        },
+        {
+          "name": "Sign in (returns JWT access + refresh tokens)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{access_token}}",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/auth/login",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "auth",
+                "login"
+              ]
+            },
+            "response": [],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"dbg@test.com\",\n  \"password\": \"Pass1234!\"\n}"
+            }
+          },
+          "description": "Body shape: see /openapi.json -> components.schemas\n\n2xx returns: { success, message, data }\n\n401 if the access token is missing/invalid."
+        },
+        {
+          "name": "Rotate an access token from a refresh token",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{access_token}}",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/auth/refresh",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "auth",
+                "refresh"
+              ]
+            },
+            "response": [],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"$ref\": \"#/components/schemas/RefreshRequest\"\n}"
+            }
+          },
+          "description": "Body shape: see /openapi.json -> components.schemas\n\n2xx returns: { success, message, data }\n\n401 if the access token is missing/invalid."
+        },
+        {
+          "name": "Revoke current refresh-token family",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{access_token}}",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/auth/logout",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "auth",
+                "logout"
+              ]
+            },
+            "response": []
+          },
+          "description": "2xx returns: { success, message, data }\n\n401 if the access token is missing/invalid."
+        },
+        {
+          "name": "Current user + profile",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{access_token}}",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/auth/me",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "auth",
+                "me"
+              ]
+            },
+            "response": []
+          },
+          "description": "2xx returns: { success, message, data }\n\n401 if the access token is missing/invalid."
+        },
+        {
+          "name": "Change password (current + new)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{access_token}}",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/auth/change-password",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "auth",
+                "change-password"
+              ]
+            },
+            "response": []
+          },
+          "description": "2xx returns: { success, message, data }\n\n401 if the access token is missing/invalid."
+        },
+        {
+          "name": "Admin: change a user's role (job-seeker ↔ employer, admin not settable here)",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{access_token}}",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/auth/users/{id}/role",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "auth",
+                "users",
+                "{{id}}",
+                "role"
+              ]
+            },
+            "response": []
+          },
+          "description": "2xx returns: { success, message, data }\n\n401 if the access token is missing/invalid."
+        }
+      ]
+    },
+    {
+      "name": "Companies",
+      "item": [
+        {
+          "name": "Create/update the authenticated employer's own company",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{access_token}}",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/companies",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "companies"
+              ]
+            },
+            "response": []
+          },
+          "description": "2xx returns: { success, message, data }\n\n401 if the access token is missing/invalid."
+        },
+        {
+          "name": "Get the authenticated user's company",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{access_token}}",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/companies/mine",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "companies",
+                "mine"
+              ]
+            },
+            "response": []
+          },
+          "description": "2xx returns: { success, message, data }\n\n401 if the access token is missing/invalid."
+        },
+        {
+          "name": "Upload a (form-data) company logo",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{access_token}}",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/companies/logo",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "companies",
+                "logo"
+              ]
+            },
+            "response": []
+          },
+          "description": "Body shape: see /openapi.json -> components.schemas\n\n2xx returns: { success, message, data }\n\n401 if the access token is missing/invalid."
+        },
+        {
+          "name": "Public company lookup by slug",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{access_token}}",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/companies/slug/{slug}",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "companies",
+                "slug",
+                "{{slug}}"
+              ]
+            },
+            "response": []
+          },
+          "description": "2xx returns: { success, message, data }"
+        },
+        {
+          "name": "Serve a company logo by filename",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{access_token}}",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/companies/logos/{filename}",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "companies",
+                "logos",
+                "{{filename}}"
+              ]
+            },
+            "response": []
+          },
+          "description": "2xx returns: { success, message, data }"
+        }
+      ]
+    },
+    {
+      "name": "Jobs",
+      "item": [
+        {
+          "name": "List jobs (paginated; filters via query string)",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{access_token}}",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/jobs",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "jobs"
+              ]
+            },
+            "response": []
+          },
+          "description": "2xx returns: { success, message, data }"
+        },
+        {
+          "name": "Create a job (employer)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{access_token}}",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/jobs",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "jobs"
+              ]
+            },
+            "response": []
+          },
+          "description": "401 if the access token is missing/invalid."
+        },
+        {
+          "name": "Get a job by id",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{access_token}}",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/jobs/{id}",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "jobs",
+                "{{id}}"
+              ]
+            },
+            "response": []
+          },
+          "description": "2xx returns: { success, message, data }"
+        },
+        {
+          "name": "Update a job (employer)",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{access_token}}",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/jobs/{id}",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "jobs",
+                "{{id}}"
+              ]
+            },
+            "response": []
+          },
+          "description": "2xx returns: { success, message, data }\n\n401 if the access token is missing/invalid."
+        },
+        {
+          "name": "Delete a job (employer)",
+          "request": {
+            "method": "DELETE",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{access_token}}",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/jobs/{id}",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "jobs",
+                "{{id}}"
+              ]
+            },
+            "response": []
+          },
+          "description": "2xx returns: { success, message, data }\n\n401 if the access token is missing/invalid."
+        },
+        {
+          "name": "Get a job by slug",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{access_token}}",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/jobs/slug/{slug}",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "jobs",
+                "slug",
+                "{{slug}}"
+              ]
+            },
+            "response": []
+          },
+          "description": "2xx returns: { success, message, data }"
+        },
+        {
+          "name": "AI-assist: generate a job description from a title/requirements",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{access_token}}",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/jobs/generate-description",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "jobs",
+                "generate-description"
+              ]
+            },
+            "response": []
+          },
+          "description": "2xx returns: { success, message, data }\n\n401 if the access token is missing/invalid."
+        }
+      ]
+    },
+    {
+      "name": "Applications",
+      "item": [
+        {
+          "name": "Apply to a job (job-seeker)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{access_token}}",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/applications",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "applications"
+              ]
+            },
+            "response": []
+          },
+          "description": "401 if the access token is missing/invalid."
+        },
+        {
+          "name": "List the candidate's applications",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{access_token}}",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/applications/mine",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "applications",
+                "mine"
+              ]
+            },
+            "response": []
+          },
+          "description": "2xx returns: { success, message, data }"
+        },
+        {
+          "name": "List applications for the employer's jobs",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{access_token}}",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/applications/employer",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "applications",
+                "employer"
+              ]
+            },
+            "response": []
+          },
+          "description": "2xx returns: { success, message, data }"
+        },
+        {
+          "name": "Employer application stats",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{access_token}}",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/applications/stats",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "applications",
+                "stats"
+              ]
+            },
+            "response": []
+          },
+          "description": "2xx returns: { success, message, data }"
+        },
+        {
+          "name": "Get an application (participant or admin)",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{access_token}}",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/applications/{id}",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "applications",
+                "{{id}}"
+              ]
+            },
+            "response": []
+          },
+          "description": "2xx returns: { success, message, data }"
+        },
+        {
+          "name": "Employer: change application status (e.g. accepted/rejected)",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{access_token}}",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/applications/{id}/status",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "applications",
+                "{{id}}",
+                "status"
+              ]
+            },
+            "response": []
+          },
+          "description": "2xx returns: { success, message, data }"
+        },
+        {
+          "name": "Candidate: withdraw an application",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{access_token}}",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/applications/{id}/withdraw",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "applications",
+                "{{id}}",
+                "withdraw"
+              ]
+            },
+            "response": []
+          },
+          "description": "2xx returns: { success, message, data }"
+        }
+      ]
+    },
+    {
+      "name": "Interviews",
+      "item": [
+        {
+          "name": "Start an interview",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{access_token}}",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/interviews/start",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "interviews",
+                "start"
+              ]
+            },
+            "response": [],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"applicationId\": \"<paste application _id>\",\n  \"language\": \"en\",\n  \"customQuestions\": [\n    \"Describe a time you led a team.\",\n    \"How do you handle ambiguity?\"\n  ]\n}"
+            }
+          },
+          "description": "AI mode (default): the service generates a question set from the job + resume.\nCustom mode: supply `customQuestions` (1-20 strings) — the employer's questions are used verbatim, the interview is human-graded (answers are scored by the employer, not the AI), and a DISC-style personality assessment is available afterwards.\n\nBody shape: see /openapi.json -> components.schemas\n\n2xx returns: { success, message, data }"
+        },
+        {
+          "name": "List interviews the authenticated employer supervises",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{access_token}}",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/interviews/employer",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "interviews",
+                "employer"
+              ]
+            },
+            "response": []
+          },
+          "description": "2xx returns: { success, message, data }\n\n401 if the access token is missing/invalid."
+        },
+        {
+          "name": "Find the interview for an application (participant)",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{access_token}}",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/interviews/by-application/{applicationId}",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "interviews",
+                "by-application",
+                "{{applicationId}}"
+              ]
+            },
+            "response": []
+          },
+          "description": "2xx returns: { success, message, data }"
+        },
+        {
+          "name": "Interview session state (questions, answers, scores, mode, DISC summary)",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{access_token}}",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/interviews/{id}",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "interviews",
+                "{{id}}"
+              ]
+            },
+            "response": []
+          },
+          "description": "2xx returns: { success, message, data }\n\n401 if the access token is missing/invalid."
+        },
+        {
+          "name": "Submit an answer (JSON). In 'custom' mode the answer is recorded without an AI score for employer evaluation.",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{access_token}}",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/interviews/{id}/answer",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "interviews",
+                "{{id}}",
+                "answer"
+              ]
+            },
+            "response": [],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"answer\": \"...at least 20 characters...\"\n}"
+            }
+          },
+          "description": "Body shape: see /openapi.json -> components.schemas\n\n2xx returns: { success, message, data }\n\n401 if the access token is missing/invalid."
+        },
+        {
+          "name": "Stream an answer (SSE, text/event-stream).",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{access_token}}",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/interviews/{id}/answer/stream",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "interviews",
+                "{{id}}",
+                "answer",
+                "stream"
+              ]
+            },
+            "response": [],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"answer\": \"...at least 20 characters...\"\n}"
+            }
+          },
+          "description": "AI mode: live tokens (`{\"type\":\"token\",\"content\":\"...\"}`) then a final `{\"type\":\"done\", ...scored answer, nextQuestion, finished}`. Custom (human-graded) mode: a confirmation token + `done` (no AI score).\n\nBody shape: see /openapi.json -> components.schemas\n\n2xx returns: { success, message, data }\n\n401 if the access token is missing/invalid."
+        },
+        {
+          "name": "Abandon an in-progress interview",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{access_token}}",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/interviews/{id}/abandon",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "interviews",
+                "{{id}}",
+                "abandon"
+              ]
+            },
+            "response": []
+          },
+          "description": "2xx returns: { success, message, data }\n\n401 if the access token is missing/invalid."
+        },
+        {
+          "name": "The 24 personality statements (fa/en), for the candidate to rate",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{access_token}}",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/interviews/{id}/disc/items",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "interviews",
+                "{{id}}",
+                "disc",
+                "items"
+              ]
+            },
+            "response": []
+          },
+          "description": "2xx returns: { success, message, data }\n\n401 if the access token is missing/invalid."
+        },
+        {
+          "name": "Submit all 24 DISC ratings → server computes the profile",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{access_token}}",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/interviews/{id}/disc/answers",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "interviews",
+                "{{id}}",
+                "disc",
+                "answers"
+              ]
+            },
+            "response": [],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"responses\": [\n    {\n      \"index\": 0,\n      \"rating\": 5\n    },\n    {\n      \"index\": 1,\n      \"rating\": 1\n    },\n    {\n      \"index\": 2,\n      \"rating\": 2\n    },\n    {\n      \"index\": 3,\n      \"rating\": 3\n    },\n    {\n      \"index\": 4,\n      \"rating\": 4\n    },\n    {\n      \"index\": 5,\n      \"rating\": 5\n    },\n    {\n      \"index\": 6,\n      \"rating\": 1\n    },\n    {\n      \"index\": 7,\n      \"rating\": 2\n    },\n    {\n      \"index\": 8,\n      \"rating\": 3\n    },\n    {\n      \"index\": 9,\n      \"rating\": 4\n    },\n    {\n      \"index\": 10,\n      \"rating\": 5\n    },\n    {\n      \"index\": 11,\n      \"rating\": 1\n    },\n    {\n      \"index\": 12,\n      \"rating\": 2\n    },\n    {\n      \"index\": 13,\n      \"rating\": 3\n    },\n    {\n      \"index\": 14,\n      \"rating\": 4\n    },\n    {\n      \"index\": 15,\n      \"rating\": 5\n    },\n    {\n      \"index\": 16,\n      \"rating\": 1\n    },\n    {\n      \"index\": 17,\n      \"rating\": 2\n    },\n    {\n      \"index\": 18,\n      \"rating\": 3\n    },\n    {\n      \"index\": 19,\n      \"rating\": 4\n    },\n    {\n      \"index\": 20,\n      \"rating\": 5\n    },\n    {\n      \"index\": 21,\n      \"rating\": 1\n    },\n    {\n      \"index\": 22,\n      \"rating\": 2\n    },\n    {\n      \"index\": 23,\n      \"rating\": 3\n    }\n  ]\n}"
+            }
+          },
+          "description": "Body shape: see /openapi.json -> components.schemas\n\n2xx returns: { success, message, data }\n\n401 if the access token is missing/invalid."
+        },
+        {
+          "name": "Employer: view a candidate's personality profile",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{access_token}}",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/interviews/{id}/disc",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "interviews",
+                "{{id}}",
+                "disc"
+              ]
+            },
+            "response": []
+          },
+          "description": "2xx returns: { success, message, data }\n\n401 if the access token is missing/invalid."
+        },
+        {
+          "name": "Employer: final transcript + hiring report",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{access_token}}",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/interviews/{id}/report",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "interviews",
+                "{{id}}",
+                "report"
+              ]
+            },
+            "response": []
+          },
+          "description": "2xx returns: { success, message, data }\n\n401 if the access token is missing/invalid."
+        }
+      ]
+    },
+    {
+      "name": "Notifications",
+      "item": [
+        {
+          "name": "List the authenticated user's notifications (unread-first)",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{access_token}}",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/notifications",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "notifications"
+              ]
+            },
+            "response": []
+          },
+          "description": "2xx returns: { success, message, data }\n\n401 if the access token is missing/invalid."
+        },
+        {
+          "name": "List activity feed items",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{access_token}}",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/notifications/activities",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "notifications",
+                "activities"
+              ]
+            },
+            "response": []
+          },
+          "description": "2xx returns: { success, message, data }\n\n401 if the access token is missing/invalid."
+        },
+        {
+          "name": "Mark all notifications read",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{access_token}}",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/notifications/read-all",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "notifications",
+                "read-all"
+              ]
+            },
+            "response": []
+          },
+          "description": "2xx returns: { success, message, data }\n\n401 if the access token is missing/invalid."
+        },
+        {
+          "name": "Mark a single notification read",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{access_token}}",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/notifications/{id}/read",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "notifications",
+                "{{id}}",
+                "read"
+              ]
+            },
+            "response": []
+          },
+          "description": "2xx returns: { success, message, data }\n\n401 if the access token is missing/invalid."
+        }
+      ]
+    }
+  ]
+}

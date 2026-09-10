@@ -1,4 +1,4 @@
-import { internalFetch } from "@portal/shared";
+import { internalFetch, internalFetchStream } from "@portal/shared";
 
 // Outbound internal clients. interview-service owns no application/job/
 // resume data — it validates access and snapshots context via these calls.
@@ -132,6 +132,24 @@ export async function aiScore(input: {
     console.error("[interview] answer scoring failed:", err);
     return null;
   }
+}
+
+/**
+ * Streaming variant of aiScore: returns the raw fetch Response so the caller
+ * can pipe SSE tokens to the client while accumulating the full score locally.
+ */
+export function aiScoreStream(input: {
+  jobTitle: string;
+  question: string;
+  questionType: string;
+  answer: string;
+  language: "fa" | "en";
+}) {
+  return internalFetchStream(AI(), "/internal/interview/score-answer/stream", {
+    method: "POST",
+    body: input,
+    timeoutMs: 90_000,
+  });
 }
 
 export async function aiReport(input: {

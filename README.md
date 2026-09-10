@@ -31,6 +31,27 @@ docker compose up -d --build
 
 Gateway (and every API route) is then at `http://localhost:8000`.
 
+## API documentation
+
+OpenAPI 3.0 spec + Swagger UI are served by the gateway (no extra deps):
+
+- `http://localhost:8000/api-docs` — Swagger UI (loads swagger-ui-dist from CDN).
+- `http://localhost:8000/openapi.json` — machine-readable spec (import into Postman/Insomnia/curl).
+
+Sign in with `POST /api/auth/login` to get an `accessToken`, paste `Bearer <token>` into the **Authorize** dialog in the UI (auth is persisted across requests), then try out any endpoint. Docs are generated from the real gateway route table (see `services/api-gateway/src/openapi.ts`) and reflect the shared Zod contracts. Offline? The UI needs the CDN; `/openapi.json` is always available regardless.
+
+### Postman collection
+
+A ready-to-import Postman Collection v2.1 is committed at `infra/postman_collection.json`
+(41 requests across Auth / Companies / Jobs / Applications / Interviews / Notifications,
+Bearer auth on `{{access_token}}`, `{{base_url}}` = `http://localhost:8000`).
+
+Import with **File → Import → Upload Files** inside Postman, then:
+
+1. `POST /api/auth/login` (email/password) → copy `data.accessToken` into `{{access_token}}`
+   (or paste it into the **Authorize** dialog — `persistAuthorization` is on),
+2. run any other request.
+
 ## Run locally (bare Node 20+)
 
 ```bash
@@ -73,12 +94,32 @@ interview survives job/employer changes later.
 | Endpoint (via gateway) | Role | What |
 |---|---|---|
 | `POST /api/interviews/start` { applicationId, language } | candidate | AI generates a tailored question set (technical/behavioral/resume/intro) from the job + the candidate's resume |
-| `POST /api/interviews/:id/answer` { answer } | candidate | AI scores 0–10 with feedback + strengths/improvements, returns the next question; the **last answer** triggers the final report |
-| `GET /api/interviews/:id` | participant | Session state (questions, answers, scores) |
+| `POST /api/interviews/start` { applicationId, language, **customQuestions** } | candidate | **Employer-custom mode**: the employer-supplied questions are used verbatim (`mode: "custom"`) — answers are human-graded (no AI score); the employer evaluates the transcript + DISC profile |
+| `POST /api/interviews/:id/answer` { answer } | candidate | AI scores 0–10 with feedback + next question (in `custom` mode the answer is stored **without** an AI score and evaluated by the employer) |
+| `POST /api/interviews/:id/answer/stream` { answer } | candidate | **SSE stream**: tokens flow live as `{"type":"token","content":"..."}`, then a final `{"type":"done"}` carrying the scored answer + next question (same scoring/DB logic as `answer`). In `custom` mode it records the answer and returns a confirmation + `done` |
+| `GET /api/interviews/:id/disc/items` | participant | The 24 assessment statements (localized fa/en) with their factor |
+| `POST /api/interviews/:id/disc/answers` { responses: [{index, rating 1-5}] } | candidate | Submit the personality assessment → server computes D/I/S/C scores (0–100) + primary profile; stored on the session |
+| `GET /api/interviews/:id/disc` | employer | The candidate's personality profile (factor scores, primary label) for human evaluation |
+| `GET /api/interviews/:id` | participant | Session state (questions, answers, scores, mode, DISC summary) |
 | `GET /api/interviews/by-application/:applicationId` | participant | Find the interview attached to a given application |
 | `PATCH /api/interviews/:id/abandon` | candidate | Abandon an in-progress interview |
 | `GET /api/interviews/:id/report` | employer | Full transcript + hiring report (score, strengths, weaknesses, recommendation) |
 | `GET /api/interviews/employer` | employer | List + filter interviews across their jobs |
+
+Two interview modes:
+
+- **`ai`** (default) — AI generates the questions and scores each answer 0–10
+  (streaming supported). Completion writes an AI hiring report back to the
+  application and publishes `interview.completed` with the overall score.
+- **`custom`** — the employer supplies the questions at `start`
+  (`customQuestions`). Answers are recorded **without** an AI score; the
+  employer evaluates the transcript themselves, supported by the
+  **personality assessment**: 24 statements (6 per factor — Dominance /
+  Influence / Steadiness / Conscientiousness, a generic model, not the
+  trademarked DISC instrument) rated 1–5 by the candidate, normalized to
+  0–100 per factor with the highest factor as the primary profile. The
+  `interview.completed` event carries `overallScore: null` +
+  `recommendation: "pending"` for this mode.
 
 On completion an `interview.completed` event is published on the
 `portal:events` Redis stream; `notification-service` consumes it to notify the

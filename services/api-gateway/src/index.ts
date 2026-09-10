@@ -6,6 +6,7 @@ import cors from "cors";
 import { envInt, env } from "@portal/shared";
 import { ROUTES, buildProxies } from "./routes.js";
 import { requireAuth, verifyOptional } from "./auth.js";
+import { openapiDocument, SWAGGER_UI_HTML } from "./openapi.js";
 
 const app = express();
 app.disable("x-powered-by");
@@ -56,6 +57,14 @@ app.use("/api", globalLimiter);
 app.get("/health", (_req, res) => {
   res.json({ service: "gateway", status: "ok" });
 });
+
+// API documentation (Swagger UI), mounted BEFORE the proxy catch-all so these
+// paths are never forwarded to an upstream service. No extra dependencies:
+// the UI is a static page that loads swagger-ui-dist from a CDN.
+app.get("/openapi.json", (_req, res) =>
+  res.type("application/json").json(openapiDocument),
+);
+app.get("/api-docs", (_req, res) => res.type("html").send(SWAGGER_UI_HTML));
 
 // ------------------------- Proxy routing -------------------------
 

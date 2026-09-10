@@ -116,11 +116,12 @@ async function handleEvent(type: string, payload: unknown): Promise<void> {
 
     case EventNames.InterviewCompleted: {
       const p = payload as InterviewPayload;
+      const scoreLabel = p.overallScore == null ? "در انتظار ارزیابی کارفرما" : `${p.overallScore}/10`;
       await Notification.create({
         userId: p.employerId,
         type: "interview.completed",
         title: `مصاحبه AI برای «${p.jobTitle}» کامل شد`,
-        body: `نمره کلی: ${p.overallScore}/10 — پیشنهاد: ${p.recommendation}`,
+        body: `نمره کلی: ${scoreLabel} — پیشنهاد: ${p.recommendation}`,
         meta: { interviewId: p.interviewId, applicationId: p.applicationId },
       });
       await Activity.create({
@@ -138,7 +139,7 @@ async function handleEvent(type: string, payload: unknown): Promise<void> {
           html: emailTemplate(
             "گزارش مصاحبه AI آماده است",
             `<p>نامزد مصاحبه AI را برای «${p.jobTitle}» کامل کرد.</p>
-             <p>نمره: <b>${p.overallScore}/10</b> — پیشنهاد: <b>${p.recommendation}</b></p>`,
+             <p>نمره: <b>${scoreLabel}</b> — پیشنهاد: <b>${p.recommendation}</b></p>`,
           ),
         });
       }

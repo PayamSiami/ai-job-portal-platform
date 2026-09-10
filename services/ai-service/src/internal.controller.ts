@@ -3,7 +3,9 @@ import { asyncHandler, sendError, sendSuccess } from "@portal/shared";
 import {
   generateInterviewQuestions,
   scoreAnswer,
+  streamScoreAnswer,
   generateInterviewReport,
+  LOCAL_WEAK_ANSWER,
 } from "./interview.ai.js";
 import {
   screenApplication,
@@ -65,6 +67,67 @@ export const interviewScore = asyncHandler(async (req, res) => {
   });
   if (!result.success) return sendError(res, result.error ?? "AI unavailable", 502);
   sendSuccess(res, { score: result.score }, "Answer scored");
+});
+
+/**
+ * Streaming answer-scoring: same prompt as interviewScore, but token-by-token
+ * over SSE so the interview-service can relay a live transcript to the browser.
+ * Each SSE `data:` line is JSON.stringify(deltaString) (a raw text fragment);
+ * the concatenated fragments form the same JSON scoreAnswer parses. Ends with
+ * `data: [DONE]`; on error emits `data: {"error":"..."}`.
+ */
+export const interviewScoreStream = asyncHandler(async (req, res) => {
+  const input = parse(ScoreSchema, req.body, res);
+  if (!input) return;
+
+  // Short-answer fast path: stream the canned low score as a single fragment.
+  if (input.answer.trim().length < 40) {
+    res.setHeader("Content-Type", "text/event-stream");
+    res.setHeader("Cache-Control", "no-cache");
+    res.setHeader("Connection", "keep-alive");
+    res.setHeader("X-Accel-Buffering", "no");
+    res.flushHeaders();
+    res.write(`data: ${JSON.stringify(JSON.stringify(LOCAL_WEAK_ANSWER))}\n\n`);
+    res.write("data: [DONE]\n\n");
+    res.end();
+    return;
+  }
+
+  // Resolve the OpenAI stream BEFORE flushing SSE headers: if the model call
+  // fails to start (bad key, no network), we want a normal JSON 500 — not a
+  // half-sent event-stream that the client can't parse.
+  let stream: Awaited<ReturnType<typeof streamScoreAnswer>>;
+  try {
+    stream = await streamScoreAnswer({
+      ...input,
+      questionType: input.questionType ?? "technical",
+      language: input.language ?? "fa",
+    });
+  } catch (err) {
+    console.error("[ai] stream creation failed:", err instanceof Error ? err.message : err);
+    return sendError(res, "AI is temporarily unavailable. Please retry.", 503);
+  }
+
+  res.setHeader("Content-Type", "text/event-stream");
+  res.setHeader("Cache-Control", "no-cache");
+  res.setHeader("Connection", "keep-alive");
+  res.setHeader("X-Accel-Buffering", "no");
+  res.flushHeaders();
+
+  try {
+    for await (const chunk of stream) {
+      const delta = chunk.choices?.[0]?.delta?.content;
+      if (delta) {
+        res.write(`data: ${JSON.stringify(delta)}\n\n`);
+      }
+    }
+    res.write("data: [DONE]\n\n");
+    res.end();
+  } catch (err) {
+    console.error("[ai] streaming failed:", err instanceof Error ? err.message : err);
+    res.write(`data: ${JSON.stringify({ error: "AI stream interrupted" })}\n\n`);
+    res.end();
+  }
 });
 
 const ReportSchema = z.object({

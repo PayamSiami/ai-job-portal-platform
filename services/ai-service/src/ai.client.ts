@@ -31,6 +31,10 @@ export interface ChatResult {
   error?: string;
 }
 
+export interface ChatStreamChunk {
+  choices?: Array<{ delta?: { content?: string | null } }>;
+}
+
 export async function completeChat(
   messages: ChatMessage[],
   options: { temperature?: number; maxTokens?: number } = {},
@@ -55,6 +59,26 @@ export async function completeChat(
     console.error("[ai] chat completion failed:", message);
     return { success: false, content: "", error: message };
   }
+}
+
+/**
+ * Streaming variant: returns an async-iterable of OpenAI chat chunks so the
+ * caller can forward token-by-token to a Server-Sent Events response. The
+ * caller inspects `.choices[0].delta.content`. The yielded chunks are typed
+ * loosely (ChatStreamChunk) and cast through `unknown` to avoid leaking the
+ * OpenAI SDK's own stream type into the rest of the platform.
+ */
+export async function completeChatStream(
+  messages: ChatMessage[],
+  options: { temperature?: number; maxTokens?: number } = {},
+): Promise<AsyncIterable<ChatStreamChunk>> {
+  return client().chat.completions.create({
+    model: process.env.AI_MODEL || "gpt-4o-mini",
+    messages,
+    temperature: options.temperature ?? 0.3,
+    max_tokens: options.maxTokens ?? 1200,
+    stream: true,
+  }) as unknown as AsyncIterable<ChatStreamChunk>;
 }
 
 /**

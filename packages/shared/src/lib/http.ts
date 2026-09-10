@@ -154,3 +154,44 @@ export async function internalFetch<T>(
   }
   return json.data as T;
 }
+
+/**
+ * Same as internalFetch, but returns the raw fetch Response so the caller can
+ * stream the body (SSE / chunked) instead of buffering it. Callers must either
+ * consume the body (or cancel it) before returning, and must NOT throw after
+ * reading status text on a non-OK response — that is handled here.
+ */
+export async function internalFetchStream(
+  base: string,
+  path: string,
+  options: InternalCallOptions = {},
+): Promise<Awaited<ReturnType<typeof fetch>>> {
+  const token = process.env.INTERNAL_API_TOKEN;
+  if (!token) throw new AppError("INTERNAL_API_TOKEN is not configured", 500);
+
+  const response = await fetch(`${base.replace(/\/$/, "")}${path}`, {
+    method: options.method ?? "GET",
+    headers: {
+      "content-type": "application/json",
+      "x-internal-token": token,
+      ...(options.userId ? { "x-user-id": options.userId } : {}),
+    },
+    body: options.body !== undefined ? JSON.stringify(options.body) : undefined,
+    signal: AbortSignal.timeout(options.timeoutMs ?? 10_000),
+  });
+
+  if (!response.ok) {
+    let message = `Internal call failed: ${response.status} ${path}`;
+    try {
+      const text = await response.text();
+      if (text) message = (JSON.parse(text) as { message?: string }).message ?? message;
+    } catch {
+      /* non-JSON error body */
+    }
+    throw new AppError(message, response.status);
+  }
+
+  // Caller streams response.body; if it doesn't consume the body it should
+  // call response.body?.cancel() to free the socket.
+  return response;
+}

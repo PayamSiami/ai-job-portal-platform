@@ -1,5 +1,6 @@
 import {
   completeChat,
+  completeChatStream,
   extractJson,
   INJECTION_GUARD,
   languageInstruction,
@@ -120,7 +121,7 @@ export interface AnswerScore {
   improvements: string[];
 }
 
-const LOCAL_WEAK_ANSWER: AnswerScore = {
+export const LOCAL_WEAK_ANSWER: AnswerScore = {
   score: 2,
   feedback: "پاسخ خیلی کوتاه بود؛ لطفاً با جزئیات و مثال‌های واقعی پاسخ دهید.",
   strengths: [],
@@ -132,6 +133,37 @@ export async function scoreAnswer(input: ScoreInput): Promise<{ success: boolean
     return { success: true, score: LOCAL_WEAK_ANSWER };
   }
 
+  const result = await completeChat(buildScoreMessages(input), { temperature: 0.2, maxTokens: 700 });
+  if (!result.success) return { success: false, error: result.error };
+
+  const parsed = extractJson<Partial<AnswerScore>>(result.content);
+  if (!parsed || typeof parsed.score !== "number") {
+    return { success: false, error: "Malformed AI score response" };
+  }
+  return {
+    success: true,
+    score: {
+      score: clamp(parsed.score, 0, 10),
+      feedback: parsed.feedback ?? "",
+      strengths: asStringArray(parsed.strengths),
+      improvements: asStringArray(parsed.improvements),
+    },
+  };
+}
+
+/**
+ * Streaming variant of scoreAnswer. Returns an async iterable of chat chunks
+ * (OpenAI with `stream: true`). The raw delta.content tokens, once
+ * concatenated, form the SAME JSON string that scoreAnswer parses — callers
+ * accumulate the fragments and run extractJson on the result.
+ */
+export async function streamScoreAnswer(
+  input: ScoreInput,
+): Promise<AsyncIterable<{ choices?: Array<{ delta?: { content?: string | null } }> }>> {
+  return completeChatStream(buildScoreMessages(input), { temperature: 0.2, maxTokens: 700 });
+}
+
+function buildScoreMessages(input: ScoreInput): import("./ai.client.js").ChatMessage[] {
   const system = [
     "You are an expert technical interviewer grading a candidate's answer.",
     INJECTION_GUARD,
@@ -149,28 +181,10 @@ export async function scoreAnswer(input: ScoreInput): Promise<{ success: boolean
     `</candidate_data>`,
   ].join("\n");
 
-  const result = await completeChat(
-    [
-      { role: "system", content: system },
-      { role: "user", content: user },
-    ],
-    { temperature: 0.2, maxTokens: 700 },
-  );
-  if (!result.success) return { success: false, error: result.error };
-
-  const parsed = extractJson<Partial<AnswerScore>>(result.content);
-  if (!parsed || typeof parsed.score !== "number") {
-    return { success: false, error: "Malformed AI score response" };
-  }
-  return {
-    success: true,
-    score: {
-      score: clamp(parsed.score, 0, 10),
-      feedback: parsed.feedback ?? "",
-      strengths: asStringArray(parsed.strengths),
-      improvements: asStringArray(parsed.improvements),
-    },
-  };
+  return [
+    { role: "system", content: system },
+    { role: "user", content: user },
+  ];
 }
 
 export interface ReportInput {
