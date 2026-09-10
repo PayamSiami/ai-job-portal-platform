@@ -43,7 +43,7 @@ Sign in with `POST /api/auth/login` to get an `accessToken`, paste `Bearer <toke
 ### Postman collection
 
 A ready-to-import Postman Collection v2.1 is committed at `infra/postman_collection.json`
-(48 requests across Auth / Companies / Jobs / Applications / Interviews / Notifications / Resumes,
+(50 requests across Auth / Companies / Jobs / Applications / Interviews / Notifications / Resumes,
 Bearer auth on `{{access_token}}`, `{{base_url}}` = `http://localhost:8000`).
 
 Import with **File → Import → Upload Files** inside Postman, then:

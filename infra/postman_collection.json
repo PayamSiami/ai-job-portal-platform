@@ -680,6 +680,34 @@
           "description": "2xx returns: { success, message, data }"
         },
         {
+          "name": "List candidates for a job (employer)",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{access_token}}",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/applications/job/{jobId}/candidates",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "applications",
+                "job",
+                "{{jobId}}",
+                "candidates"
+              ]
+            },
+            "response": []
+          },
+          "description": "Employer: list candidates who applied to one of your jobs (the jobId in the path must be a job you own; a job-seeker gets an empty list). Query params: ?page (default 1), ?limit (default 20, max 50), ?status (optional filter). Each item is an application enriched with the candidate's username + public profile (email/PII excluded). 2xx returns: { success, message, data: { items, total, page, limit, pages } }. 401 if the access token is missing/invalid."
+        },
+        {
           "name": "Employer application stats",
           "request": {
             "method": "GET",
